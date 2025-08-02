@@ -26,7 +26,7 @@ func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http
 	requestData := request.Body
 	decoder := json.NewDecoder(requestData)
 	if err := decoder.Decode(&todo); err != nil {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request")
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
 
@@ -50,7 +50,7 @@ func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.R
 	rows, err := handler.db.QueryContext(request.Context(), "SELECT id, title, description from todos")
 
 	if err != nil {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request")
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 	decoder := json.NewDecoder(requestData)
 
 	if err := decoder.Decode(&todo); err != nil {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request")
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
 	result, err := handler.db.ExecContext(
@@ -89,12 +89,12 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong")
+		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
 
 	if rowsAffected == 0 {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected")
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected", err)
 		return
 	}
 
@@ -111,13 +111,13 @@ func (handler *TodoHandler) DeleteTodo(writer http.ResponseWriter, request *http
 	result, err := handler.db.Exec("DELETE FROM todos where id = ?", id)
 
 	if err != nil {
-		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong")
+		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if rowsAffected == 0 {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected")
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected", err)
 		return
 	}
 	responses.SuccessJSONResponse(writer, http.StatusNoContent, nil)
