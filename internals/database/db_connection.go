@@ -3,10 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"github.com/thetestcoder/todo-app/internals/config"
 )
 
 func Connect() *sql.DB {
-	dsn := "root:secret@tcp(localhost:3306)/todo_app"
+	dsn := config.LoadDbConfig()
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
