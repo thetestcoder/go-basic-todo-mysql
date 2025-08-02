@@ -1,17 +1,27 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/thetestcoder/todo-app/internals/database"
 	"github.com/thetestcoder/todo-app/internals/models"
 	"github.com/thetestcoder/todo-app/internals/responses"
 	"net/http"
 	"strconv"
 )
 
-func CreateTodo(writer http.ResponseWriter, request *http.Request) {
+type TodoHandler struct {
+	db *sql.DB
+}
+
+func NewTodoHandler(db *sql.DB) TodoHandler {
+	return TodoHandler{
+		db: db,
+	}
+}
+
+func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http.Request) {
 	// get data title and description
 	var todo models.TODO
 	requestData := request.Body
@@ -20,10 +30,8 @@ func CreateTodo(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	db := database.Connect()
-	defer database.Close(db)
 
-	result, err := db.ExecContext(
+	result, err := handler.db.ExecContext(
 		request.Context(),
 		"INSERT INTO todos (title, description) VALUES (?, ?)",
 		todo.Title,
@@ -40,11 +48,9 @@ func CreateTodo(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(todo)
 }
 
-func GetTodos(writer http.ResponseWriter, request *http.Request) {
+func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.Request) {
 	var todos []models.TODO
-	db := database.Connect()
-	defer database.Close(db)
-	rows, err := db.QueryContext(request.Context(), "SELECT id, title, description from todos")
+	rows, err := handler.db.QueryContext(request.Context(), "SELECT id, title, description from todos")
 
 	if err != nil {
 		panic(err)
@@ -60,17 +66,13 @@ func GetTodos(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(todos)
 }
 
-func UpdateTodo(writer http.ResponseWriter, request *http.Request) {
+func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http.Request) {
 	requestVars := mux.Vars(request)
 	idStr := requestVars["id"]
 
 	var todo models.TODO
 	var id int
 	id, _ = strconv.Atoi(idStr)
-
-	db := database.Connect()
-	defer database.Close(db)
-
 	requestData := request.Body
 	decoder := json.NewDecoder(requestData)
 
@@ -78,7 +80,7 @@ func UpdateTodo(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Invalid request", http.StatusBadRequest)
 		return
 	}
-	result, err := db.ExecContext(
+	result, err := handler.db.ExecContext(
 		request.Context(),
 		"UPDATE todos SET title = ?, description = ? where id = ?",
 		todo.Title,
@@ -103,17 +105,14 @@ func UpdateTodo(writer http.ResponseWriter, request *http.Request) {
 	json.NewEncoder(writer).Encode(todo)
 }
 
-func DeleteTodo(writer http.ResponseWriter, request *http.Request) {
+func (handler *TodoHandler) DeleteTodo(writer http.ResponseWriter, request *http.Request) {
 	requestVars := mux.Vars(request)
 	idStr := requestVars["id"]
 
 	var id int
 	id, _ = strconv.Atoi(idStr)
 
-	db := database.Connect()
-	defer database.Close(db)
-
-	result, err := db.Exec("DELETE FROM todos where id = ?", id)
+	result, err := handler.db.Exec("DELETE FROM todos where id = ?", id)
 
 	if err != nil {
 		http.Error(writer, "somehting went wrong", http.StatusInternalServerError)
