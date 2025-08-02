@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
 )
@@ -32,28 +33,28 @@ func main() {
 		db.Stats().OpenConnections,
 		"connections",
 	)
-	createRoute()
-	startServer()
+	startServer(createRoute())
 }
 
-func startServer() {
-	http.ListenAndServe(":8888", nil)
+func startServer(router *mux.Router) {
+	server := &http.Server{
+		Handler: router,
+		Addr:    ":8888",
+	}
+	server.ListenAndServe()
 }
 
-func createRoute() {
+func createRoute() *mux.Router {
 	// create all routes here
-	http.HandleFunc("/create", CreateTodo)
-	http.HandleFunc("/list", GetTodos)
-	http.HandleFunc("/update/", UpdateTodo)
-	http.HandleFunc("/delete/", DeleteTodo)
+	router := mux.NewRouter()
+	router.HandleFunc("/create", CreateTodo).Methods("POST")
+	router.HandleFunc("/list", GetTodos).Methods("GET")
+	router.HandleFunc("/update/{id}", UpdateTodo).Methods("PUT")
+	router.HandleFunc("/delete/{id}", DeleteTodo).Methods("DELETE")
+	return router
 }
 
 func CreateTodo(writer http.ResponseWriter, request *http.Request) {
-	// handle only post-request
-	if request.Method != http.MethodPost {
-		http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	// get data title and description
 	var todo TODO
 	requestData := request.Body
@@ -105,13 +106,8 @@ func GetTodos(writer http.ResponseWriter, request *http.Request) {
 }
 
 func UpdateTodo(writer http.ResponseWriter, request *http.Request) {
-	if request.Method != http.MethodPut {
-		http.Error(writer, "Method is not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	query := request.URL.Query()
-	idStr := query.Get("id")
+	requestVars := mux.Vars(request)
+	idStr := requestVars["id"]
 
 	var todo TODO
 	var id int
@@ -153,14 +149,8 @@ func UpdateTodo(writer http.ResponseWriter, request *http.Request) {
 }
 
 func DeleteTodo(writer http.ResponseWriter, request *http.Request) {
-
-	if request.Method != http.MethodDelete {
-		http.Error(writer, "Method is not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	query := request.URL.Query()
-	idStr := query.Get("id")
+	requestVars := mux.Vars(request)
+	idStr := requestVars["id"]
 
 	var id int
 	id, _ = strconv.Atoi(idStr)

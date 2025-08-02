@@ -1,0 +1,127 @@
+{
+  "info": {
+    "_postman_id": "fe02a133-e642-4e98-9df7-8678861701fc",
+    "name": "TODO basic-mux",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "12331510",
+    "_collection_link": "https://www.postman.com/thetestcoder/workspace/go/collection/12331510-fe02a133-e642-4e98-9df7-8678861701fc?action=share&source=collection_link&creator=12331510"
+  },
+  "item": [
+    {
+      "name": "Create TODO",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"title\"  : \"This is title for basic mux\",\r\n    \"description\" : \"this mux example\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseURL}}/create",
+          "host": [
+            "{{baseURL}}"
+          ],
+          "path": [
+            "create"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "List todos",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseURL}}/list",
+          "host": [
+            "{{baseURL}}"
+          ],
+          "path": [
+            "list"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "update todo",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"title\": \"This is mux updated\",\r\n    \"description\": \"new mux description added here\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseURL}}/update/2",
+          "host": [
+            "{{baseURL}}"
+          ],
+          "path": [
+            "update",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "delete todo",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseURL}}/delete/2",
+          "host": [
+            "{{baseURL}}"
+          ],
+          "path": [
+            "delete",
+            "2"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseURL",
+      "value": "localhost:8888",
+      "type": "default"
+    }
+  ]
+}
