@@ -3,7 +3,6 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/thetestcoder/todo-app/internals/models"
 	"github.com/thetestcoder/todo-app/internals/responses"
@@ -27,7 +26,7 @@ func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http
 	requestData := request.Body
 	decoder := json.NewDecoder(requestData)
 	if err := decoder.Decode(&todo); err != nil {
-		http.Error(writer, "Invalid request", http.StatusBadRequest)
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
@@ -43,9 +42,7 @@ func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http
 	id, err := result.LastInsertId()
 	todo.ID = int(id)
 
-	writer.WriteHeader(http.StatusCreated)
-	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(todo)
+	responses.SuccessJSONResponse(writer, http.StatusCreated, todo)
 }
 
 func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.Request) {
@@ -53,7 +50,8 @@ func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.R
 	rows, err := handler.db.QueryContext(request.Context(), "SELECT id, title, description from todos")
 
 	if err != nil {
-		panic(err)
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request")
+		return
 	}
 
 	for rows.Next() {
@@ -62,8 +60,7 @@ func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.R
 		todos = append(todos, todo)
 	}
 
-	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(todos)
+	responses.SuccessJSONResponse(writer, http.StatusOK, todos)
 }
 
 func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http.Request) {
@@ -77,7 +74,7 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 	decoder := json.NewDecoder(requestData)
 
 	if err := decoder.Decode(&todo); err != nil {
-		http.Error(writer, "Invalid request", http.StatusBadRequest)
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request")
 		return
 	}
 	result, err := handler.db.ExecContext(
@@ -92,17 +89,16 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		http.Error(writer, "Error updating todo: "+err.Error(), http.StatusInternalServerError)
+		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 
 	if rowsAffected == 0 {
-		http.Error(writer, "No rows affected", http.StatusBadRequest)
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected")
 		return
 	}
 
-	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(todo)
+	responses.SuccessJSONResponse(writer, http.StatusOK, todo)
 }
 
 func (handler *TodoHandler) DeleteTodo(writer http.ResponseWriter, request *http.Request) {
@@ -115,22 +111,14 @@ func (handler *TodoHandler) DeleteTodo(writer http.ResponseWriter, request *http
 	result, err := handler.db.Exec("DELETE FROM todos where id = ?", id)
 
 	if err != nil {
-		http.Error(writer, "somehting went wrong", http.StatusInternalServerError)
-		fmt.Println(err)
+		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 
 	rowsAffected, err := result.RowsAffected()
 	if rowsAffected == 0 {
-		http.Error(writer, "No rows affected", http.StatusBadRequest)
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected")
 		return
 	}
-
-	writer.Header().Set("Content-Type", "application/json")
-
-	response := responses.DeleteTodoResponse{
-		Message: "Deleted successfully",
-	}
-
-	json.NewEncoder(writer).Encode(response)
+	responses.SuccessJSONResponse(writer, http.StatusNoContent, nil)
 }
