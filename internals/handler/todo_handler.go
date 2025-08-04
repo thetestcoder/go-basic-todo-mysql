@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/thetestcoder/todo-app/internals/models"
 	"github.com/thetestcoder/todo-app/internals/responses"
+	"github.com/thetestcoder/todo-app/internals/validator"
 	"net/http"
 	"strconv"
 )
@@ -21,12 +22,17 @@ func NewTodoHandler(db *sql.DB) TodoHandler {
 }
 
 func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http.Request) {
-	// get data title and description
+	todoValidator := validator.NewTodoValidator()
 	var todo models.TODO
 	requestData := request.Body
 	decoder := json.NewDecoder(requestData)
 	if err := decoder.Decode(&todo); err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", err)
+		return
+	}
+
+	if errors := todoValidator.ValidateTodo(todo); len(errors) > 0 {
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", errors)
 		return
 	}
 
@@ -66,6 +72,7 @@ func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.R
 func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http.Request) {
 	requestVars := mux.Vars(request)
 	idStr := requestVars["id"]
+	todoValidator := validator.NewTodoValidator()
 
 	var todo models.TODO
 	var id int
@@ -77,6 +84,12 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", err)
 		return
 	}
+
+	if errors := todoValidator.ValidateTodo(todo); len(errors) > 0 {
+		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", errors)
+		return
+	}
+
 	result, err := handler.db.ExecContext(
 		request.Context(),
 		"UPDATE todos SET title = ?, description = ? where id = ?",
