@@ -4,27 +4,25 @@ import (
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/thetestcoder/todo-app/internals/models"
-	"github.com/thetestcoder/todo-app/internals/repository"
 	"github.com/thetestcoder/todo-app/internals/responses"
+	"github.com/thetestcoder/todo-app/internals/service"
 	"github.com/thetestcoder/todo-app/internals/validator"
 	"net/http"
 	"strconv"
 )
 
 type TodoHandler struct {
-	todoRepository repository.TodoRepository
-	todoValidator  validator.TodoValidator
+	todoService   service.TodoService
+	todoValidator validator.TodoValidator
 }
 
-func NewTodoHandler(repository repository.TodoRepository, validator validator.TodoValidator) TodoHandler {
+func NewTodoHandler(service service.TodoService) TodoHandler {
 	return TodoHandler{
-		todoRepository: repository,
-		todoValidator:  validator,
+		todoService: service,
 	}
 }
 
 func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http.Request) {
-
 	var todo models.TODO
 	requestData := request.Body
 	decoder := json.NewDecoder(requestData)
@@ -33,12 +31,7 @@ func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http
 		return
 	}
 
-	if errors := handler.todoValidator.ValidateTodo(todo); len(errors) > 0 {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", errors)
-		return
-	}
-
-	err := handler.todoRepository.Create(request.Context(), &todo)
+	err := handler.todoService.Create(request.Context(), &todo)
 	if err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Invalid request", err)
 	}
@@ -47,7 +40,7 @@ func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http
 }
 
 func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.Request) {
-	todos, err := handler.todoRepository.GetAll(request.Context())
+	todos, err := handler.todoService.GetAll(request.Context())
 	if err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
 		return
@@ -74,12 +67,7 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 		return
 	}
 
-	if errors := handler.todoValidator.ValidateTodo(todo); len(errors) > 0 {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", errors)
-		return
-	}
-
-	err := handler.todoRepository.Update(request.Context(), id, &todo)
+	err := handler.todoService.Update(request.Context(), id, &todo)
 
 	if err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
@@ -96,7 +84,7 @@ func (handler *TodoHandler) DeleteTodo(writer http.ResponseWriter, request *http
 	var id int
 	id, _ = strconv.Atoi(idStr)
 
-	err := handler.todoRepository.Delete(request.Context(), id)
+	err := handler.todoService.Delete(request.Context(), id)
 
 	if err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)

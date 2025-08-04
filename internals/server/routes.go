@@ -5,6 +5,7 @@ import (
 	"github.com/thetestcoder/todo-app/internals/database"
 	"github.com/thetestcoder/todo-app/internals/handler"
 	"github.com/thetestcoder/todo-app/internals/repository"
+	"github.com/thetestcoder/todo-app/internals/service"
 	"github.com/thetestcoder/todo-app/internals/validator"
 )
 
@@ -18,8 +19,8 @@ func CreateRoute() *mux.Router {
 func initializeTodoRoutes(router *mux.Router) {
 
 	todoRepository := repository.NewSQLTodoRepository(database.Connect())
-	todoValidator := validator.NewTodoValidator()
-	todoHandler := handler.NewTodoHandler(todoRepository, todoValidator)
+	todoService := service.NewTodoService(todoRepository, validator.NewTodoValidator())
+	todoHandler := handler.NewTodoHandler(todoService)
 	router.HandleFunc("/create", todoHandler.CreateTodo).Methods("POST")
 	router.HandleFunc("/list", todoHandler.GetTodos).Methods("GET")
 	router.HandleFunc("/update/{id}", todoHandler.UpdateTodo).Methods("PUT")
