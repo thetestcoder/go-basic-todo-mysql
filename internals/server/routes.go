@@ -4,6 +4,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/thetestcoder/todo-app/internals/database"
 	"github.com/thetestcoder/todo-app/internals/handler"
+	"github.com/thetestcoder/todo-app/internals/repository"
+	"github.com/thetestcoder/todo-app/internals/validator"
 )
 
 // CreateRoute it will create routes for todo application
@@ -14,7 +16,10 @@ func CreateRoute() *mux.Router {
 }
 
 func initializeTodoRoutes(router *mux.Router) {
-	todoHandler := handler.NewTodoHandler(database.Connect())
+
+	todoRepository := repository.NewSQLTodoRepository(database.Connect())
+	todoValidator := validator.NewTodoValidator()
+	todoHandler := handler.NewTodoHandler(todoRepository, todoValidator)
 	router.HandleFunc("/create", todoHandler.CreateTodo).Methods("POST")
 	router.HandleFunc("/list", todoHandler.GetTodos).Methods("GET")
 	router.HandleFunc("/update/{id}", todoHandler.UpdateTodo).Methods("PUT")

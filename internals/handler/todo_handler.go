@@ -1,10 +1,10 @@
 package handler
 
 import (
-	"database/sql"
 	"encoding/json"
 	"github.com/gorilla/mux"
 	"github.com/thetestcoder/todo-app/internals/models"
+	"github.com/thetestcoder/todo-app/internals/repository"
 	"github.com/thetestcoder/todo-app/internals/responses"
 	"github.com/thetestcoder/todo-app/internals/validator"
 	"net/http"
@@ -12,17 +12,19 @@ import (
 )
 
 type TodoHandler struct {
-	db *sql.DB
+	todoRepository repository.TodoRepository
+	todoValidator  validator.TodoValidator
 }
 
-func NewTodoHandler(db *sql.DB) TodoHandler {
+func NewTodoHandler(repository repository.TodoRepository, validator validator.TodoValidator) TodoHandler {
 	return TodoHandler{
-		db: db,
+		todoRepository: repository,
+		todoValidator:  validator,
 	}
 }
 
 func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http.Request) {
-	todoValidator := validator.NewTodoValidator()
+
 	var todo models.TODO
 	requestData := request.Body
 	decoder := json.NewDecoder(requestData)
@@ -31,48 +33,35 @@ func (handler *TodoHandler) CreateTodo(writer http.ResponseWriter, request *http
 		return
 	}
 
-	if errors := todoValidator.ValidateTodo(todo); len(errors) > 0 {
+	if errors := handler.todoValidator.ValidateTodo(todo); len(errors) > 0 {
 		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", errors)
 		return
 	}
 
-	result, err := handler.db.ExecContext(
-		request.Context(),
-		"INSERT INTO todos (title, description) VALUES (?, ?)",
-		todo.Title,
-		todo.Description,
-	)
+	err := handler.todoRepository.Create(request.Context(), &todo)
 	if err != nil {
-		panic(err)
+		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Invalid request", err)
 	}
-	id, err := result.LastInsertId()
-	todo.ID = int(id)
 
 	responses.SuccessJSONResponse(writer, http.StatusCreated, todo)
 }
 
 func (handler *TodoHandler) GetTodos(writer http.ResponseWriter, request *http.Request) {
-	var todos []models.TODO
-	rows, err := handler.db.QueryContext(request.Context(), "SELECT id, title, description from todos")
-
+	todos, err := handler.todoRepository.GetAll(request.Context())
 	if err != nil {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", err)
+		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
 		return
 	}
-
-	for rows.Next() {
-		var todo models.TODO
-		rows.Scan(&todo.ID, &todo.Title, &todo.Description)
-		todos = append(todos, todo)
+	if len(todos) == 0 {
+		responses.ErrorJSONResponse(writer, http.StatusNotFound, "No todos found", nil)
+		return
 	}
-
 	responses.SuccessJSONResponse(writer, http.StatusOK, todos)
 }
 
 func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http.Request) {
 	requestVars := mux.Vars(request)
 	idStr := requestVars["id"]
-	todoValidator := validator.NewTodoValidator()
 
 	var todo models.TODO
 	var id int
@@ -85,29 +74,15 @@ func (handler *TodoHandler) UpdateTodo(writer http.ResponseWriter, request *http
 		return
 	}
 
-	if errors := todoValidator.ValidateTodo(todo); len(errors) > 0 {
+	if errors := handler.todoValidator.ValidateTodo(todo); len(errors) > 0 {
 		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "Invalid request", errors)
 		return
 	}
 
-	result, err := handler.db.ExecContext(
-		request.Context(),
-		"UPDATE todos SET title = ?, description = ? where id = ?",
-		todo.Title,
-		todo.Description,
-		id)
+	err := handler.todoRepository.Update(request.Context(), id, &todo)
 
-	if err != nil {
-		panic(err)
-	}
-	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
-		return
-	}
-
-	if rowsAffected == 0 {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected", err)
 		return
 	}
 
@@ -121,17 +96,11 @@ func (handler *TodoHandler) DeleteTodo(writer http.ResponseWriter, request *http
 	var id int
 	id, _ = strconv.Atoi(idStr)
 
-	result, err := handler.db.Exec("DELETE FROM todos where id = ?", id)
+	err := handler.todoRepository.Delete(request.Context(), id)
 
 	if err != nil {
 		responses.ErrorJSONResponse(writer, http.StatusInternalServerError, "Something went wrong", err)
-		return
 	}
 
-	rowsAffected, err := result.RowsAffected()
-	if rowsAffected == 0 {
-		responses.ErrorJSONResponse(writer, http.StatusBadRequest, "No Rows affected", err)
-		return
-	}
 	responses.SuccessJSONResponse(writer, http.StatusNoContent, nil)
 }
